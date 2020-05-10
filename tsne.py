@@ -21,7 +21,8 @@ def Hbeta(D=np.array([]), beta=1.0):
 def x2p(X=np.array([]), tol=1e-5, perplexity=30.0):
     """
         Performs a binary search to get P-values in such a way that each
-        conditional Gaussian has the same perplexity.
+        conditional Gaussian has the same perplexity 
+        i.e. number of neighbours which are to be considered close.
     """
 
     # Initialize some variables
@@ -79,7 +80,7 @@ def tsne(X=np.array([]), no_dims=2, initial_dims=4, perplexity=30.0):
     iY = np.zeros((n, no_dims))
     gains = np.ones((n, no_dims))
 
-    # Compute P-values
+    # Compute P-values i.e similarity values in the higher dimension space.
     P = x2p(X, 1e-5, perplexity)
     P = P + np.transpose(P)
     P = P / np.sum(P)
@@ -88,7 +89,7 @@ def tsne(X=np.array([]), no_dims=2, initial_dims=4, perplexity=30.0):
     # Run iterations
     for iter in range(max_iter):
 
-        # Compute pairwise affinities
+        # Compute pairwise affinities in the lower dimension space i.e. 2D in our case.
         sum_Y = np.sum(np.square(Y), 1)
         num = -2. * np.dot(Y, Y.T)
         num = 1. / (1. + np.add(np.add(num, sum_Y).T, sum_Y))
@@ -101,11 +102,10 @@ def tsne(X=np.array([]), no_dims=2, initial_dims=4, perplexity=30.0):
         for i in range(n):
             dY[i, :] = np.sum(np.tile(PQ[:, i] * num[:, i], (no_dims, 1)).T * (Y[i, :] - Y), 0)
 
-        # Perform the update through gradient descent.
-        gains = (gains + 0.2) * ((dY > 0.) != (iY > 0.)) + \
-                (gains * 0.8) * ((dY > 0.) == (iY > 0.))
+        # Perform the update through gradient descent with momentum.
+        gains = (gains + 0.2) * ((dY > 0.) != (iY > 0.)) + (gains * 0.8) * ((dY > 0.) == (iY > 0.))
         gains[gains < min_gain] = min_gain
-        iY = momentum * iY - eta * (gains * dY)
+        iY = momentum * iY - (gains * dY)
         Y = Y + iY
         Y = Y - np.tile(np.mean(Y, 0), (n, 1))
 
